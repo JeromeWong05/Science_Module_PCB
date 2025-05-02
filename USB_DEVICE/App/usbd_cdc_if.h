@@ -93,14 +93,17 @@
 extern USBD_CDC_ItfTypeDef USBD_Interface_fops_FS;
 
 /* USER CODE BEGIN EXPORTED_VARIABLES */
-extern uint8_t LED2_flag; 
-extern uint8_t Pump1_flag; 
-extern uint8_t Pump1_dir; 
-extern uint8_t Pump2_flag; 
-extern uint8_t Pump2_dir; 
-extern uint8_t Pump3_flag; 
-extern uint8_t Pump3_dir; 
+typedef struct {
+  uint8_t   status;
+  uint8_t   dir;        // 0 = reverse (RL), 1 = forward (LR)
+  uint32_t  start_us;   
+  uint32_t  duration_us;
+} Pump_struct;
+
+extern uint8_t LED1; 
+extern uint8_t LED2; 
 extern uint8_t Timer6_flag; 
+extern Pump_struct pump1, pump2, pump3; 
 /* USER CODE END EXPORTED_VARIABLES */
 
 /**

@@ -291,25 +291,16 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
           if (command_index > 0) {
               // your command logic
               if (strcmp(command_buffer, "LED2 on") == 0) {
-                  LED2_flag = 1;
+                  LED2 = 1;
                   valid = 1; 
               }
               else if (strcmp(command_buffer, "LED2 off") == 0) {
-                  LED2_flag = 0;
+                  LED2 = 0;
                   valid = 1; 
               }
               
               // Prompting Pump 3
-              if (strcmp(command_buffer, "Pump3 on forward") == 0){
-                Pump3_flag = 1; 
-                Pump3_dir = 1; 
-                valid = 1; 
-              }
-              else if (strcmp(command_buffer, "Pump3 on backward") == 0){
-                Pump3_flag = 1; 
-                Pump3_dir = 0; 
-                valid = 1; 
-              }
+              if ()
 
               // timer test 
               if (strcmp(command_buffer, "Timer on") == 0){

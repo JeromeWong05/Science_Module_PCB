@@ -35,11 +35,12 @@ extern USBD_HandleTypeDef hUsbDeviceFS;
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
 
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
-
+#define NUM_PUMPS  3
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -51,16 +52,12 @@ extern USBD_HandleTypeDef hUsbDeviceFS;
 TIM_HandleTypeDef htim6;
 
 /* USER CODE BEGIN PV */
-uint8_t LED2_flag = 0; 
-uint8_t Pump1_flag = 0; 
-uint8_t Pump2_flag = 0; 
-uint8_t Pump3_flag = 0; 
-uint8_t Pump1_dir = 0; 
-uint8_t Pump2_dir = 0; 
-uint8_t Pump3_dir = 0; 
+uint8_t LED1 = 0; 
+uint8_t LED2 = 0; 
 uint8_t Timer6_flag = 0; 
 uint32_t tim6_val = 0; 
 uint32_t tim6_overflow = 0; 
+
 
 /* USER CODE END PV */
 
@@ -71,6 +68,10 @@ static void MX_TIM6_Init(void);
 /* USER CODE BEGIN PFP */
 int _write(int,char*,int);
 uint32_t Get_timer6_us(void);
+void Update_LED(void);
+static void DWT_DelayInit(void);
+static inline void Delay_us(uint32_t);
+
 
 
 
@@ -111,13 +112,12 @@ int main(void)
   MX_GPIO_Init();
   MX_USB_DEVICE_Init();
   MX_TIM6_Init();
-
   /* USER CODE BEGIN 2 */
-
-  HAL_Delay(500);
+  DWT_DelayInit();
+  HAL_Delay(1000);
   printf("> ");
 
-  // begin timer6 IT 
+  // begin timer6 ISR
   __HAL_TIM_CLEAR_FLAG(&htim6, TIM_FLAG_UPDATE);
   HAL_TIM_Base_Start_IT(&htim6);
   /* USER CODE END 2 */
@@ -126,34 +126,22 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-
-    if (LED2_flag)
-    {
-      HAL_GPIO_WritePin(GPIOB,LED2_Pin,GPIO_PIN_SET);
-    }
-    else 
-    {
-      HAL_GPIO_WritePin(GPIOB,LED2_Pin,GPIO_PIN_RESET);
-    }
-    if (Pump3_flag)
-    {
-      if (Pump3_dir){ //forward
-        HAL_GPIO_WritePin(GPIOB, P3_HS_LR_Pin, GPIO_PIN_SET);
-        HAL_GPIO_WritePin(GPIOB, P3_LS_LR_Pin, GPIO_PIN_SET);
-        HAL_GPIO_WritePin(GPIOB, P3_HS_RL_Pin, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(GPIOB, P3_LS_RL_Pin, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(GPIOB,LED2_Pin,GPIO_PIN_SET);
-      }
-    }
+    // too lazy so just set the LED flags to turn on and off 
+    Update_LED();
 
     if (Timer6_flag)
     {
       tim6_val = Get_timer6_us();
       while(Get_timer6_us() - tim6_val < 10e6);
       printf("10 seconds reached\r\n");
-      HAL_GPIO_WritePin(GPIOB,LED2_Pin,GPIO_PIN_SET);
+      LED2 = 1; 
       Timer6_flag = 0; 
-      
+    }
+
+    if (Pump3_flag)
+    {
+      pump3.status = 1; 
+      pump3.start_us = Get_timer6_us();
     }
 
     /* USER CODE END WHILE */
@@ -267,58 +255,58 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, MCU_LED_BANK_EN_Pin|MCU_Pump3_HS_LR_Pin|MCU_Pump3_LS_LR_Pin|MCU_Pump3_HS_RL_Pin
+  HAL_GPIO_WritePin(GPIOC, VAL3_Pin|VAL2_Pin|VAL1_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOA, SM_EN_Pin|SM_DIR_Pin|SM_PUL_Pin|AM_EN_Pin
+                          |VM_EN_Pin|P1_LS_RL_Pin|P1_LS_LR_Pin|P1_HS_LR_Pin
                           |LED1_Pin, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, MCU_Pump3_LS_RL_Pin|MCU_Pump2_HS_LR_Pin|MCU_Pump2_LS_LR_Pin|MCU_Pump2_LS_RL_Pin
+  HAL_GPIO_WritePin(GPIOB, P1_HS_RL_Pin|P2_HS_RL_Pin|P2_HS_LR_Pin|P2_LS_RL_Pin
                           |P3_LS_RL_Pin|P3_LS_LR_Pin|P3_HS_LR_Pin|P3_HS_RL_Pin
-                          |LED2_Pin|MCU_SM_PUL__Pin|MCU_SM_DIR__Pin|MCU_VM_EN_Pin
-                          |MCU_AM_EN_Pin, GPIO_PIN_RESET);
+                          |LED2_Pin|VAL6_Pin|VAL5_Pin|VAL4_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(MCU_SM_EN__GPIO_Port, MCU_SM_EN__Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pins : MCU_Flow1_Pin MCU_Flow2_Pin MCU_Flow3_Pin */
-  GPIO_InitStruct.Pin = MCU_Flow1_Pin|MCU_Flow2_Pin|MCU_Flow3_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  /*Configure GPIO pins : VAL3_Pin VAL2_Pin VAL1_Pin */
+  GPIO_InitStruct.Pin = VAL3_Pin|VAL2_Pin|VAL1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : MCU_LED_BANK_EN_Pin MCU_Pump3_HS_LR_Pin MCU_Pump3_LS_LR_Pin MCU_Pump3_HS_RL_Pin
+  /*Configure GPIO pins : SM_EN_Pin SM_DIR_Pin SM_PUL_Pin AM_EN_Pin
+                           VM_EN_Pin P1_LS_RL_Pin P1_LS_LR_Pin P1_HS_LR_Pin
                            LED1_Pin */
-  GPIO_InitStruct.Pin = MCU_LED_BANK_EN_Pin|MCU_Pump3_HS_LR_Pin|MCU_Pump3_LS_LR_Pin|MCU_Pump3_HS_RL_Pin
+  GPIO_InitStruct.Pin = SM_EN_Pin|SM_DIR_Pin|SM_PUL_Pin|AM_EN_Pin
+                          |VM_EN_Pin|P1_LS_RL_Pin|P1_LS_LR_Pin|P1_HS_LR_Pin
                           |LED1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : MCU_Pump3_LS_RL_Pin MCU_Pump2_HS_LR_Pin MCU_Pump2_LS_LR_Pin MCU_Pump2_LS_RL_Pin
+  /*Configure GPIO pins : P1_HS_RL_Pin P2_HS_RL_Pin P2_HS_LR_Pin P2_LS_RL_Pin
                            P3_LS_RL_Pin P3_LS_LR_Pin P3_HS_LR_Pin P3_HS_RL_Pin
-                           LED2_Pin MCU_SM_PUL__Pin MCU_SM_DIR__Pin MCU_VM_EN_Pin
-                           MCU_AM_EN_Pin */
-  GPIO_InitStruct.Pin = MCU_Pump3_LS_RL_Pin|MCU_Pump2_HS_LR_Pin|MCU_Pump2_LS_LR_Pin|MCU_Pump2_LS_RL_Pin
+                           LED2_Pin VAL6_Pin VAL5_Pin VAL4_Pin */
+  GPIO_InitStruct.Pin = P1_HS_RL_Pin|P2_HS_RL_Pin|P2_HS_LR_Pin|P2_LS_RL_Pin
                           |P3_LS_RL_Pin|P3_LS_LR_Pin|P3_HS_LR_Pin|P3_HS_RL_Pin
-                          |LED2_Pin|MCU_SM_PUL__Pin|MCU_SM_DIR__Pin|MCU_VM_EN_Pin
-                          |MCU_AM_EN_Pin;
+                          |LED2_Pin|VAL6_Pin|VAL5_Pin|VAL4_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : MCU_Pump2_HS_RL_Pin */
-  GPIO_InitStruct.Pin = MCU_Pump2_HS_RL_Pin;
+  /*Configure GPIO pin : P2_LS_LR_Pin */
+  GPIO_InitStruct.Pin = P2_LS_LR_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(MCU_Pump2_HS_RL_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(P2_LS_LR_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : MCU_SM_EN__Pin */
-  GPIO_InitStruct.Pin = MCU_SM_EN__Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  /*Configure GPIO pins : FLOW3_Pin FLOW2_Pin FLOW1_Pin */
+  GPIO_InitStruct.Pin = FLOW3_Pin|FLOW2_Pin|FLOW1_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(MCU_SM_EN__GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
@@ -329,6 +317,14 @@ int _write(int file, char *ptr, int len)
 {
   CDC_Transmit_FS((uint8_t*)ptr, len);
   return len;
+}
+
+void Update_LED(void)
+{
+  if (LED1) HAL_GPIO_WritePin(GPIOA, LED1_Pin, 1);
+  else HAL_GPIO_WritePin(GPIOA, LED1_Pin, 0);
+  if (LED2) HAL_GPIO_WritePin(GPIOB, LED2_Pin, 1);
+  else HAL_GPIO_WritePin(GPIOB, LED2_Pin, 0);
 }
 
 uint32_t Get_timer6_us(void)
@@ -345,11 +341,57 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
   }
 }
 
+static void DWT_DelayInit(void)
+{
+    CoreDebug->DEMCR   |= CoreDebug_DEMCR_TRCENA_Msk;
+    DWT->CTRL         |= DWT_CTRL_CYCCNTENA_Msk;
+}
 
-// void PumpCtrl(uint8_t pump_num, uint8_t dir, uint8_t time)
-// {
-  
-// }
+// Delay in microseconds
+static inline void Delay_us(uint32_t us)
+{
+    uint32_t start = DWT->CYCCNT;
+    uint32_t ticks = us * (HAL_RCC_GetHCLKFreq()/1000000);
+    while ((DWT->CYCCNT - start) < ticks);
+}
+
+void PumpCtrl(uint8_t pumpnum, uint8_t dir, uint8_t status, uint32_t duration)
+{
+  uint32_t start1, start2, start3; 
+  switch(pumpnum)
+  {
+    case 1: 
+      //pump 1 
+      break; 
+
+    case 2: 
+      //pump 2
+      break; 
+
+    case 3: 
+
+      break; 
+  }
+}
+
+void Pumpoff(uint8_t pumpnum)
+{
+  switch(pumpnum)
+  {
+    case 1: 
+      //pump 1 
+      break; 
+
+    case 2: 
+      //pump 2
+      break; 
+
+    case 3: 
+
+      break; 
+  }
+}
+
 
 
 /* USER CODE END 4 */
