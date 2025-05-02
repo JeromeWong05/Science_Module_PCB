@@ -48,6 +48,7 @@ extern USBD_HandleTypeDef hUsbDeviceFS;
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+TIM_HandleTypeDef htim6;
 
 /* USER CODE BEGIN PV */
 uint8_t LED2_flag = 0; 
@@ -57,14 +58,21 @@ uint8_t Pump3_flag = 0;
 uint8_t Pump1_dir = 0; 
 uint8_t Pump2_dir = 0; 
 uint8_t Pump3_dir = 0; 
+uint8_t Timer6_flag = 0; 
+uint32_t tim6_val = 0; 
+uint32_t tim6_overflow = 0; 
 
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
 void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
+static void MX_TIM6_Init(void);
 /* USER CODE BEGIN PFP */
 int _write(int,char*,int);
+void timer6_overflow(void);
+void TIM6(uint8_t);
+uint32_t Get_timer6_us(void);
 
 
 
@@ -105,10 +113,11 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USB_DEVICE_Init();
+  MX_TIM6_Init();
   /* USER CODE BEGIN 2 */
 
   HAL_Delay(500);
-  printf(">\r\n");
+  printf("> ");
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -135,6 +144,15 @@ int main(void)
         HAL_GPIO_WritePin(GPIOB, P3_LS_RL_Pin, GPIO_PIN_RESET);
         HAL_GPIO_WritePin(GPIOB,LED2_Pin,GPIO_PIN_SET);
       }
+    }
+    if (Timer6_flag)
+    {
+      TIM6(1); // start timer
+      while(Get_timer6_us() < 10e6);
+      printf("5 seconds reached!\r\n");
+
+      TIM6(0); // stop timer 
+      Timer6_flag = 0; 
     }
 
     /* USER CODE END WHILE */
@@ -190,6 +208,44 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief TIM6 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM6_Init(void)
+{
+
+  /* USER CODE BEGIN TIM6_Init 0 */
+
+  /* USER CODE END TIM6_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM6_Init 1 */
+
+  /* USER CODE END TIM6_Init 1 */
+  htim6.Instance = TIM6;
+  htim6.Init.Prescaler = 119;
+  htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim6.Init.Period = 65535;
+  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim6, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM6_Init 2 */
+
+  /* USER CODE END TIM6_Init 2 */
+
 }
 
 /**
@@ -268,15 +324,52 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
-int _write(int file, char *ptr, int len) {
+int _write(int file, char *ptr, int len) 
+{
   CDC_Transmit_FS((uint8_t*)ptr, len);
   return len;
 }
 
-void PumpCtrl(uint8_t pump_num, uint8_t dir, uint8_t time)
+void timer6_overflow(void)
 {
+  if(__HAL_TIM_GET_FLAG(&htim6, TIM_FLAG_UPDATE))
+  {
+    tim6_overflow++; 
+    __HAL_TIM_CLEAR_FLAG(&htim6, TIM_FLAG_UPDATE);
+  }
+}
+
+void TIM6(uint8_t status)
+{
+  if (status)
+  {
+    // restart values and clear overflow flag
+    tim6_val = 0; 
+    tim6_overflow = 0; 
+    __HAL_TIM_CLEAR_FLAG(&htim6, TIM_FLAG_UPDATE);
+
+    // start timer6
+    HAL_TIM_Base_Start(&htim6);
+  }
+  else 
+  {
+    // stop timer
+    HAL_TIM_Base_Stop(&htim6);
+  }
   
 }
+
+uint32_t Get_timer6_us(void)
+{
+  timer6_overflow();
+  tim6_val = __HAL_TIM_GET_COUNTER(&htim6);
+  return tim6_overflow * 65536 + tim6_val;
+}
+
+// void PumpCtrl(uint8_t pump_num, uint8_t dir, uint8_t time)
+// {
+  
+// }
 
 
 /* USER CODE END 4 */

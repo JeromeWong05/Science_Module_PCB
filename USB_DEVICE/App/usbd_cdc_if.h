@@ -100,6 +100,7 @@ extern uint8_t Pump2_flag;
 extern uint8_t Pump2_dir; 
 extern uint8_t Pump3_flag; 
 extern uint8_t Pump3_dir; 
+extern uint8_t Timer6_flag; 
 /* USER CODE END EXPORTED_VARIABLES */
 
 /**

@@ -28,11 +28,11 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* Private define ------------------------------------------------------------*/
-#define CMD_BUFFER_SIZE 128
 /* Private macro -------------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
+#define CMD_BUFFER_SIZE 128
 static char command_buffer[CMD_BUFFER_SIZE];
 static uint8_t command_index = 0;
 /* USER CODE END PV */
@@ -308,6 +308,12 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
               else if (strcmp(command_buffer, "Pump3 on backward") == 0){
                 Pump3_flag = 1; 
                 Pump3_dir = 0; 
+                valid = 1; 
+              }
+
+              // timer test 
+              if (strcmp(command_buffer, "Timer on") == 0){
+                Timer6_flag = 1; 
                 valid = 1; 
               }
   
