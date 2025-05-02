@@ -70,8 +70,6 @@ static void MX_GPIO_Init(void);
 static void MX_TIM6_Init(void);
 /* USER CODE BEGIN PFP */
 int _write(int,char*,int);
-void timer6_overflow(void);
-void TIM6(uint8_t);
 uint32_t Get_timer6_us(void);
 
 
@@ -107,25 +105,27 @@ int main(void)
   SystemClock_Config();
 
   /* USER CODE BEGIN SysInit */
-
   /* USER CODE END SysInit */
 
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_USB_DEVICE_Init();
   MX_TIM6_Init();
+
   /* USER CODE BEGIN 2 */
 
   HAL_Delay(500);
   printf("> ");
+
+  // begin timer6 IT 
+  __HAL_TIM_CLEAR_FLAG(&htim6, TIM_FLAG_UPDATE);
+  HAL_TIM_Base_Start_IT(&htim6);
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    HAL_GPIO_TogglePin(GPIOA, LED1_Pin);
-    HAL_Delay(500);
 
     if (LED2_flag)
     {
@@ -145,14 +145,15 @@ int main(void)
         HAL_GPIO_WritePin(GPIOB,LED2_Pin,GPIO_PIN_SET);
       }
     }
+
     if (Timer6_flag)
     {
-      TIM6(1); // start timer
-      while(Get_timer6_us() < 10e6);
-      printf("5 seconds reached!\r\n");
-
-      TIM6(0); // stop timer 
+      tim6_val = Get_timer6_us();
+      while(Get_timer6_us() - tim6_val < 10e6);
+      printf("10 seconds reached\r\n");
+      HAL_GPIO_WritePin(GPIOB,LED2_Pin,GPIO_PIN_SET);
       Timer6_flag = 0; 
+      
     }
 
     /* USER CODE END WHILE */
@@ -231,7 +232,7 @@ static void MX_TIM6_Init(void)
   htim6.Init.Prescaler = 119;
   htim6.Init.CounterMode = TIM_COUNTERMODE_UP;
   htim6.Init.Period = 65535;
-  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  htim6.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim6) != HAL_OK)
   {
     Error_Handler();
@@ -330,41 +331,20 @@ int _write(int file, char *ptr, int len)
   return len;
 }
 
-void timer6_overflow(void)
-{
-  if(__HAL_TIM_GET_FLAG(&htim6, TIM_FLAG_UPDATE))
-  {
-    tim6_overflow++; 
-    __HAL_TIM_CLEAR_FLAG(&htim6, TIM_FLAG_UPDATE);
-  }
-}
-
-void TIM6(uint8_t status)
-{
-  if (status)
-  {
-    // restart values and clear overflow flag
-    tim6_val = 0; 
-    tim6_overflow = 0; 
-    __HAL_TIM_CLEAR_FLAG(&htim6, TIM_FLAG_UPDATE);
-
-    // start timer6
-    HAL_TIM_Base_Start(&htim6);
-  }
-  else 
-  {
-    // stop timer
-    HAL_TIM_Base_Stop(&htim6);
-  }
-  
-}
-
 uint32_t Get_timer6_us(void)
 {
-  timer6_overflow();
-  tim6_val = __HAL_TIM_GET_COUNTER(&htim6);
-  return tim6_overflow * 65536 + tim6_val;
+  int temp = __HAL_TIM_GET_COUNTER(&htim6);
+  return tim6_overflow * 65536 + temp;
 }
+
+// INTERRUPT CALLBACKS
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+  if (htim == &htim6) //check if timer6 IT flag
+  {
+    tim6_overflow++;
+  }
+}
+
 
 // void PumpCtrl(uint8_t pump_num, uint8_t dir, uint8_t time)
 // {
