@@ -135,13 +135,6 @@ int main(void)
         HAL_GPIO_WritePin(GPIOB, P3_LS_RL_Pin, GPIO_PIN_RESET);
         HAL_GPIO_WritePin(GPIOB,LED2_Pin,GPIO_PIN_SET);
       }
-      else { //backward
-        HAL_GPIO_WritePin(GPIOB, P3_HS_LR_Pin, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(GPIOB, P3_LS_LR_Pin, GPIO_PIN_RESET);
-        HAL_GPIO_WritePin(GPIOB, P3_HS_RL_Pin, GPIO_PIN_SET);
-        HAL_GPIO_WritePin(GPIOB, P3_LS_RL_Pin, GPIO_PIN_SET);
-        HAL_GPIO_WritePin(GPIOB,LED2_Pin,GPIO_PIN_RESET);
-      }
     }
 
     /* USER CODE END WHILE */
@@ -280,7 +273,10 @@ int _write(int file, char *ptr, int len) {
   return len;
 }
 
-
+void PumpCtrl(uint8_t pump_num, uint8_t dir, uint8_t time)
+{
+  
+}
 
 
 /* USER CODE END 4 */
