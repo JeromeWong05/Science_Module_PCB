@@ -22,7 +22,7 @@
 #include "usbd_cdc_if.h"
 
 /* USER CODE BEGIN INCLUDE */
-
+#include <stdint.h>
 
 /* USER CODE END INCLUDE */
 
@@ -131,7 +131,7 @@ static int8_t CDC_Receive_FS(uint8_t* pbuf, uint32_t *Len);
 static int8_t CDC_TransmitCplt_FS(uint8_t *pbuf, uint32_t *Len, uint8_t epnum);
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_DECLARATION */
-
+uint8_t CDC_Transmit_FS(uint8_t*, uint16_t);
 /* USER CODE END PRIVATE_FUNCTIONS_DECLARATION */
 
 /**
@@ -266,9 +266,70 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
 {
   /* USER CODE BEGIN 6 */
-  USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
-  USBD_CDC_ReceivePacket(&hUsbDeviceFS);
-  return (USBD_OK);
+
+    char temp[CMD_BUFFER_SIZE*2];
+    uint8_t valid = 0; 
+  
+      for (uint32_t i = 0; i < *Len; i++) {
+          char c = (char)Buf[i];
+          uint8_t u = (uint8_t)c;
+  
+          // Echo every char back
+          if (c != '\r' && c != '\n') {
+              // block until endpoint is free
+              CDC_Transmit_FS(&u, 1);
+              
+              if (command_index < CMD_BUFFER_SIZE - 1) {
+                  command_buffer[command_index++] = c;
+              }
+              continue;
+          }
+          
+          // Terminate command
+          command_buffer[command_index] = '\0';
+  
+          if (command_index > 0) {
+              // your command logic
+              if (strcmp(command_buffer, "LED2 on") == 0) {
+                  LED2_flag = 1;
+                  valid = 1; 
+              }
+              else if (strcmp(command_buffer, "LED2 off") == 0) {
+                  LED2_flag = 0;
+                  valid = 1; 
+              }
+              
+              // Prompting Pump 3
+              if (strcmp(command_buffer, "Pump3 on forward") == 0){
+                Pump3_flag = 1; 
+                Pump3_dir = 1; 
+                valid = 1; 
+              }
+              else if (strcmp(command_buffer, "Pump3 on backward") == 0){
+                Pump3_flag = 1; 
+                Pump3_dir = 0; 
+                valid = 1; 
+              }
+  
+              if (valid)
+              {
+                sprintf(temp, "\r\nReceieved: %s\r\n> ", command_buffer);
+                CDC_Transmit_FS((uint8_t*)temp, strlen(temp));
+              }
+              else 
+              {
+                sprintf(temp, "\r\nError Commaand:%s\r\n> ", command_buffer);
+                CDC_Transmit_FS((uint8_t*)temp, strlen(temp));
+              }
+              command_index = 0;
+          }
+  
+      }
+  
+      // 4) re-arm USB to receive more
+      USBD_CDC_SetRxBuffer(&hUsbDeviceFS, Buf);
+      USBD_CDC_ReceivePacket(&hUsbDeviceFS);
+      return USBD_OK;
   /* USER CODE END 6 */
 }
 

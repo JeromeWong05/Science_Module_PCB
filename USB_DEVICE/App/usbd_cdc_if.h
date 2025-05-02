@@ -93,7 +93,13 @@
 extern USBD_CDC_ItfTypeDef USBD_Interface_fops_FS;
 
 /* USER CODE BEGIN EXPORTED_VARIABLES */
-
+extern uint8_t LED2_flag; 
+extern uint8_t Pump1_flag; 
+extern uint8_t Pump1_dir; 
+extern uint8_t Pump2_flag; 
+extern uint8_t Pump2_dir; 
+extern uint8_t Pump3_flag; 
+extern uint8_t Pump3_dir; 
 /* USER CODE END EXPORTED_VARIABLES */
 
 /**

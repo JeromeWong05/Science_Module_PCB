@@ -50,6 +50,13 @@ extern USBD_HandleTypeDef hUsbDeviceFS;
 /* Private variables ---------------------------------------------------------*/
 
 /* USER CODE BEGIN PV */
+uint8_t LED2_flag = 0; 
+uint8_t Pump1_flag = 0; 
+uint8_t Pump2_flag = 0; 
+uint8_t Pump3_flag = 0; 
+uint8_t Pump1_dir = 0; 
+uint8_t Pump2_dir = 0; 
+uint8_t Pump3_dir = 0; 
 
 /* USER CODE END PV */
 
@@ -110,6 +117,33 @@ int main(void)
   {
     HAL_GPIO_TogglePin(GPIOA, LED1_Pin);
     HAL_Delay(500);
+
+    if (LED2_flag)
+    {
+      HAL_GPIO_WritePin(GPIOB,LED2_Pin,GPIO_PIN_SET);
+    }
+    else 
+    {
+      HAL_GPIO_WritePin(GPIOB,LED2_Pin,GPIO_PIN_RESET);
+    }
+    if (Pump3_flag)
+    {
+      if (Pump3_dir){ //forward
+        HAL_GPIO_WritePin(GPIOB, P3_HS_LR_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(GPIOB, P3_LS_LR_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(GPIOB, P3_HS_RL_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(GPIOB, P3_LS_RL_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(GPIOB,LED2_Pin,GPIO_PIN_SET);
+      }
+      else { //backward
+        HAL_GPIO_WritePin(GPIOB, P3_HS_LR_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(GPIOB, P3_LS_LR_Pin, GPIO_PIN_RESET);
+        HAL_GPIO_WritePin(GPIOB, P3_HS_RL_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(GPIOB, P3_LS_RL_Pin, GPIO_PIN_SET);
+        HAL_GPIO_WritePin(GPIOB,LED2_Pin,GPIO_PIN_RESET);
+      }
+    }
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -188,7 +222,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(GPIOB, MCU_Pump3_LS_RL_Pin|MCU_Pump2_HS_LR_Pin|MCU_Pump2_LS_LR_Pin|MCU_Pump2_LS_RL_Pin
-                          |MCU_Pump1_LS_RL_Pin|MCU_Pump1_HS_RL_Pin|MCU_Pump1_LS_LR_Pin|MCU_Pump1_HS_LR_Pin
+                          |P3_LS_RL_Pin|P3_LS_LR_Pin|P3_HS_LR_Pin|P3_HS_RL_Pin
                           |LED2_Pin|MCU_SM_PUL__Pin|MCU_SM_DIR__Pin|MCU_VM_EN_Pin
                           |MCU_AM_EN_Pin, GPIO_PIN_RESET);
 
@@ -211,11 +245,11 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /*Configure GPIO pins : MCU_Pump3_LS_RL_Pin MCU_Pump2_HS_LR_Pin MCU_Pump2_LS_LR_Pin MCU_Pump2_LS_RL_Pin
-                           MCU_Pump1_LS_RL_Pin MCU_Pump1_HS_RL_Pin MCU_Pump1_LS_LR_Pin MCU_Pump1_HS_LR_Pin
+                           P3_LS_RL_Pin P3_LS_LR_Pin P3_HS_LR_Pin P3_HS_RL_Pin
                            LED2_Pin MCU_SM_PUL__Pin MCU_SM_DIR__Pin MCU_VM_EN_Pin
                            MCU_AM_EN_Pin */
   GPIO_InitStruct.Pin = MCU_Pump3_LS_RL_Pin|MCU_Pump2_HS_LR_Pin|MCU_Pump2_LS_LR_Pin|MCU_Pump2_LS_RL_Pin
-                          |MCU_Pump1_LS_RL_Pin|MCU_Pump1_HS_RL_Pin|MCU_Pump1_LS_LR_Pin|MCU_Pump1_HS_LR_Pin
+                          |P3_LS_RL_Pin|P3_LS_LR_Pin|P3_HS_LR_Pin|P3_HS_RL_Pin
                           |LED2_Pin|MCU_SM_PUL__Pin|MCU_SM_DIR__Pin|MCU_VM_EN_Pin
                           |MCU_AM_EN_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;

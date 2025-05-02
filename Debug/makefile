@@ -64,8 +64,8 @@ all: main-build
 main-build: Science_Module_PCB.elf secondary-outputs
 
 # Tool invocations
-Science_Module_PCB.elf Science_Module_PCB.map: $(OBJS) $(USER_OBJS) C:\Users\wongh\Downloads\Science_Module_PCB\Science_Module_PCB\STM32L4P5CETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "Science_Module_PCB.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\wongh\Downloads\Science_Module_PCB\Science_Module_PCB\STM32L4P5CETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Science_Module_PCB.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+Science_Module_PCB.elf Science_Module_PCB.map: $(OBJS) $(USER_OBJS) C:\Users\wongh\Git\UBC\ Rover\Science_Module_PCB\STM32L4P5CETX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "Science_Module_PCB.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m4 -T"C:\Users\wongh\Git\UBC Rover\Science_Module_PCB\STM32L4P5CETX_FLASH.ld" --specs=nosys.specs -Wl,-Map="Science_Module_PCB.map" -Wl,--gc-sections -static --specs=nano.specs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 
