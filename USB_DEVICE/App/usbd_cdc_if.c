@@ -270,6 +270,7 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
     char temp[CMD_BUFFER_SIZE*2];
     uint8_t valid = 0; 
     int pumpnum, status, direction, duration; 
+    int valvenum;
   
       for (uint32_t i = 0; i < *Len; i++) {
           char c = (char)Buf[i];
@@ -333,6 +334,13 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
                     pump3.start_us = Get_timer6_us();
                     break; 
                 }
+              }
+              
+              if (sscanf(command_buffer, "valve %d %d %d", &valvenum, &status, &duration) == 3){
+                valid = 1; 
+                valve[valvenum-1].status = (uint8_t)status; 
+                valve[valvenum-1].start_us = Get_timer6_us();
+                valve[valvenum-1].duration_us = (uint32_t)duration * 1e6; 
               }
 
               // timer test 

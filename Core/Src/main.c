@@ -148,9 +148,9 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
-    // too lazy so just set the LED flags to turn on and off 
     Update_LED();
-    CheckPumps();
+    PumpCtrl();
+    ValveCtrl();
     Timer6_test();
 
 
@@ -426,12 +426,11 @@ void PumpCtrl(void)
     if (Get_timer6_us() - pump1.start_us < pump1.duration_us)
     {
       PumpGPIO(3);
-      LED1 = 1; 
+      LED2 = 1; 
     }
     else 
     {
-      LED1 = 0; 
-      LED2 = 1; 
+      LED2 = 0; 
       pump1.status = 0; 
       pump1.start_us = 0; 
       pump1.duration_us = 0; 
@@ -445,12 +444,11 @@ void PumpCtrl(void)
     if (Get_timer6_us() - pump2.start_us < pump2.duration_us)
     {
       PumpGPIO(3);
-      LED1 = 1; 
+      LED2 = 1; 
     }
     else 
     {
-      LED1 = 0; 
-      LED2 = 1; 
+      LED2 = 0;  
       pump2.status = 0; 
       pump2.start_us = 0; 
       pump2.duration_us = 0; 
@@ -464,12 +462,11 @@ void PumpCtrl(void)
     if (Get_timer6_us() - pump3.start_us < pump3.duration_us)
     {
       PumpGPIO(3);
-      LED1 = 1; 
+      LED2 = 1; 
     }
     else 
     {
-      LED1 = 0; 
-      LED2 = 1; 
+      LED2 = 0; 
       pump3.status = 0; 
       pump3.start_us = 0; 
       pump3.duration_us = 0; 
@@ -600,14 +597,16 @@ void ValveCtrl(void)
       if (Get_timer6_us()-valve[i].start_us < valve[i].duration_us)
       {
         ValveGPIO(i+1,1);
+        LED1 = 1;
       }
       else
       {
-        ValveGPIO(i+1,0);
+        LED1 = 0;
         valve[i].status = 0; 
         valve[i].start_us = 0; 
         valve[i].duration_us = 0; 
-        printf("Valve %d stopped", i+1);
+        ValveGPIO(i+1,0);
+        printf("Valve %d stopped\r\n", i+1);
       }
     }
   }

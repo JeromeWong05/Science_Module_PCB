@@ -110,7 +110,7 @@ extern uint8_t LED1;
 extern uint8_t LED2; 
 extern uint8_t Timer6_flag; 
 extern Pump_struct pump1, pump2, pump3; 
-extern valve[6];
+extern valve_struct valve[6];
 /* USER CODE END EXPORTED_VARIABLES */
 
 /**
