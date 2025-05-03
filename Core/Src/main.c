@@ -34,7 +34,10 @@ extern USBD_HandleTypeDef hUsbDeviceFS;
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-
+typedef struct {
+  uint32_t pulse_duration; 
+  uint32_t flow_rate; 
+} flow_struct; 
 
 /* USER CODE END PTD */
 
@@ -57,6 +60,7 @@ uint8_t LED2 = 0;
 uint8_t Timer6_flag = 0; 
 uint32_t tim6_val = 0; 
 uint32_t tim6_overflow = 0; 
+Pump_struct pump1, pump2, pump3; 
 
 
 /* USER CODE END PV */
@@ -71,6 +75,11 @@ uint32_t Get_timer6_us(void);
 void Update_LED(void);
 static void DWT_DelayInit(void);
 static inline void Delay_us(uint32_t);
+void PumpCtrl(uint8_t);
+void BootstrapCharge(uint8_t, uint8_t);
+void Pumpoff(uint8_t);
+void CheckPumps(void);
+
 
 
 
@@ -128,6 +137,7 @@ int main(void)
   {
     // too lazy so just set the LED flags to turn on and off 
     Update_LED();
+    CheckPumps();
 
     if (Timer6_flag)
     {
@@ -138,11 +148,8 @@ int main(void)
       Timer6_flag = 0; 
     }
 
-    if (Pump3_flag)
-    {
-      pump3.status = 1; 
-      pump3.start_us = Get_timer6_us();
-    }
+
+
 
     /* USER CODE END WHILE */
 
@@ -355,22 +362,139 @@ static inline void Delay_us(uint32_t us)
     while ((DWT->CYCCNT - start) < ticks);
 }
 
-void PumpCtrl(uint8_t pumpnum, uint8_t dir, uint8_t status, uint32_t duration)
+void CheckPumps(void)
 {
-  uint32_t start1, start2, start3; 
+  if (pump1.status)
+  {
+    if (Get_timer6_us() - pump1.start_us < pump1.duration_us)
+    {
+      PumpCtrl(3);
+      LED1 = 1; 
+    }
+    else 
+    {
+      LED1 = 0; 
+      LED2 = 1; 
+      pump1.status = 0; 
+      pump1.start_us = 0; 
+      pump1.duration_us = 0; 
+      Pumpoff(3);
+      printf("Pump 1 done!\r\n");
+    }
+  }
+
+  if (pump2.status)
+  {
+    if (Get_timer6_us() - pump2.start_us < pump2.duration_us)
+    {
+      PumpCtrl(3);
+      LED1 = 1; 
+    }
+    else 
+    {
+      LED1 = 0; 
+      LED2 = 1; 
+      pump2.status = 0; 
+      pump2.start_us = 0; 
+      pump2.duration_us = 0; 
+      Pumpoff(3);
+      printf("Pump 2 done!\r\n");
+    }
+  }
+  
+  if (pump3.status)
+  {
+    if (Get_timer6_us() - pump3.start_us < pump3.duration_us)
+    {
+      PumpCtrl(3);
+      LED1 = 1; 
+    }
+    else 
+    {
+      LED1 = 0; 
+      LED2 = 1; 
+      pump3.status = 0; 
+      pump3.start_us = 0; 
+      pump3.duration_us = 0; 
+      Pumpoff(3);
+      printf("Pump 3 done!\r\n");
+    }
+  }
+}
+
+void PumpCtrl(uint8_t pumpnum)
+{
   switch(pumpnum)
   {
     case 1: 
-      //pump 1 
+        // Precharging bootstrap capacitor 
+        Pumpoff(1);
+        BootstrapCharge(1,pump1.dir); 
+        Delay_us(1);
+        Pumpoff(1);
+        if (pump1.dir) // 1 is LR
+        {
+          HAL_GPIO_WritePin(GPIOA, P1_LS_LR_Pin, 1);
+          HAL_GPIO_WritePin(GPIOA, P1_HS_LR_Pin, 1);
+        }
+        else 
+        {
+          HAL_GPIO_WritePin(GPIOA, P1_LS_RL_Pin, 1);
+          HAL_GPIO_WritePin(GPIOB, P1_HS_RL_Pin, 1);
+        }
       break; 
 
     case 2: 
-      //pump 2
+      // Precharging bootstrap capacitor 
+      Pumpoff(2);
+      BootstrapCharge(2,pump2.dir); 
+      Delay_us(1);
+      Pumpoff(2);
+      if (pump2.dir) // 1 is LR
+      {
+        HAL_GPIO_WritePin(GPIOB, P2_LS_LR_Pin, 1);
+        HAL_GPIO_WritePin(GPIOB, P2_HS_LR_Pin, 1);
+      }
+      else 
+      {
+        HAL_GPIO_WritePin(GPIOB, P2_LS_RL_Pin, 1);
+        HAL_GPIO_WritePin(GPIOB, P2_HS_RL_Pin, 1);
+      }
       break; 
 
     case 3: 
+      // Precharging bootstrap capacitor 
+      Pumpoff(3);
+      BootstrapCharge(3,pump3.dir); 
+      Delay_us(1);
+      Pumpoff(3);
 
+      if (pump3.dir) // 1 is LR
+      {
+        HAL_GPIO_WritePin(GPIOB, P3_LS_LR_Pin, 1);
+        HAL_GPIO_WritePin(GPIOB, P3_HS_LR_Pin, 1);
+      }
+      else 
+      {
+        HAL_GPIO_WritePin(GPIOB, P3_LS_RL_Pin, 1);
+        HAL_GPIO_WritePin(GPIOB, P3_HS_RL_Pin, 1);
+      }
       break; 
+  }
+}
+
+void BootstrapCharge(uint8_t pumpnum, uint8_t dir)
+{
+  switch(pumpnum)
+  {
+    case 1: 
+      break;
+    case 2: 
+      break; 
+    case 3:
+      if (dir) HAL_GPIO_WritePin(GPIOB, P3_LS_LR_Pin, 1);
+      else HAL_GPIO_WritePin(GPIOB, P3_LS_RL_Pin, 1);
+      break;
   }
 }
 
@@ -379,15 +503,24 @@ void Pumpoff(uint8_t pumpnum)
   switch(pumpnum)
   {
     case 1: 
-      //pump 1 
+      HAL_GPIO_WritePin(GPIOA, P1_LS_RL_Pin, 0);
+      HAL_GPIO_WritePin(GPIOA, P1_LS_LR_Pin, 0);
+      HAL_GPIO_WritePin(GPIOA, P1_HS_LR_Pin, 0);
+      HAL_GPIO_WritePin(GPIOB, P1_HS_RL_Pin, 0);
       break; 
 
     case 2: 
-      //pump 2
+      HAL_GPIO_WritePin(GPIOB, P2_LS_RL_Pin, 0);
+      HAL_GPIO_WritePin(GPIOB, P2_LS_LR_Pin, 0);
+      HAL_GPIO_WritePin(GPIOB, P2_HS_LR_Pin, 0);
+      HAL_GPIO_WritePin(GPIOB, P2_HS_RL_Pin, 0);
       break; 
 
     case 3: 
-
+      HAL_GPIO_WritePin(GPIOB, P3_LS_RL_Pin, 0);
+      HAL_GPIO_WritePin(GPIOB, P3_LS_LR_Pin, 0);
+      HAL_GPIO_WritePin(GPIOB, P3_HS_LR_Pin, 0);
+      HAL_GPIO_WritePin(GPIOB, P3_HS_RL_Pin, 0);
       break; 
   }
 }

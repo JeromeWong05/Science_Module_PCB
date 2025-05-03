@@ -95,7 +95,7 @@ extern USBD_CDC_ItfTypeDef USBD_Interface_fops_FS;
 /* USER CODE BEGIN EXPORTED_VARIABLES */
 typedef struct {
   uint8_t   status;
-  uint8_t   dir;        // 0 = reverse (RL), 1 = forward (LR)
+  uint8_t   dir;        // 1 is LR, 0 is RL
   uint32_t  start_us;   
   uint32_t  duration_us;
 } Pump_struct;
@@ -118,6 +118,7 @@ extern Pump_struct pump1, pump2, pump3;
 uint8_t CDC_Transmit_FS(uint8_t* Buf, uint16_t Len);
 
 /* USER CODE BEGIN EXPORTED_FUNCTIONS */
+uint32_t Get_timer6_us(void);
 
 /* USER CODE END EXPORTED_FUNCTIONS */
 

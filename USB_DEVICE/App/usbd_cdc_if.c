@@ -269,6 +269,7 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
 
     char temp[CMD_BUFFER_SIZE*2];
     uint8_t valid = 0; 
+    int pumpnum, status, direction, duration; 
   
       for (uint32_t i = 0; i < *Len; i++) {
           char c = (char)Buf[i];
@@ -291,16 +292,48 @@ static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
           if (command_index > 0) {
               // your command logic
               if (strcmp(command_buffer, "LED2 on") == 0) {
-                  LED2 = 1;
-                  valid = 1; 
+                LED2 = 1;
+                valid = 1; 
               }
               else if (strcmp(command_buffer, "LED2 off") == 0) {
-                  LED2 = 0;
-                  valid = 1; 
+                LED2 = 0;
+                valid = 1; 
               }
               
-              // Prompting Pump 3
-              if ()
+              if (strcmp(command_buffer, "LED1 on") == 0) {
+                LED1 = 1;
+                valid = 1; 
+              }
+              else if (strcmp(command_buffer, "LED1 off") == 0) {
+                LED1 = 0;
+                valid = 1; 
+              }
+              // Format is "pump 1 1 1 200", "pump pumpnum status direction duration"
+              if (sscanf(command_buffer, "pump %d %d %d %d", &pumpnum, &status, &direction, &duration) == 4)
+              {
+                valid = 1; 
+                switch(pumpnum)
+                {
+                  case 1: 
+                    pump1.status = status; 
+                    pump1.dir = direction; 
+                    pump1.duration_us = (uint32_t)duration * 1e6; // duration prompted in seconds -> convert to us
+                    pump1.start_us = Get_timer6_us();
+                    break; 
+                  case 2: 
+                    pump2.status = status; 
+                    pump2.dir = direction; 
+                    pump2.duration_us = (uint32_t)duration * 1e6; // duration prompted in seconds -> convert to us
+                    pump2.start_us = Get_timer6_us();
+                    break; 
+                  case 3: 
+                    pump3.status = status; 
+                    pump3.dir = direction; 
+                    pump3.duration_us = (uint32_t)duration * 1e6; // duration prompted in seconds -> convert to us
+                    pump3.start_us = Get_timer6_us();
+                    break; 
+                }
+              }
 
               // timer test 
               if (strcmp(command_buffer, "Timer on") == 0){
