@@ -100,10 +100,17 @@ typedef struct {
   uint32_t  duration_us;
 } Pump_struct;
 
+typedef struct {
+  uint8_t status; 
+  uint32_t start_us; 
+  uint32_t duration_us; 
+} valve_struct; 
+
 extern uint8_t LED1; 
 extern uint8_t LED2; 
 extern uint8_t Timer6_flag; 
 extern Pump_struct pump1, pump2, pump3; 
+extern valve[6];
 /* USER CODE END EXPORTED_VARIABLES */
 
 /**

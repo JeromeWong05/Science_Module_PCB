@@ -36,7 +36,7 @@ extern USBD_HandleTypeDef hUsbDeviceFS;
 /* USER CODE BEGIN PTD */
 typedef struct {
   uint32_t pulse_duration; 
-  uint32_t flow_rate; 
+  double flow_rate; 
 } flow_struct; 
 
 /* USER CODE END PTD */
@@ -60,7 +60,11 @@ uint8_t LED2 = 0;
 uint8_t Timer6_flag = 0; 
 uint32_t tim6_val = 0; 
 uint32_t tim6_overflow = 0; 
+uint32_t flow_start[3] = {0};
+
 Pump_struct pump1, pump2, pump3; 
+flow_struct flow[3]; 
+valve_struct valve[6]; 
 
 
 /* USER CODE END PV */
@@ -70,15 +74,24 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_TIM6_Init(void);
 /* USER CODE BEGIN PFP */
+// System functions
 int _write(int,char*,int);
 uint32_t Get_timer6_us(void);
-void Update_LED(void);
 static void DWT_DelayInit(void);
 static inline void Delay_us(uint32_t);
-void PumpCtrl(uint8_t);
+// Pump
+void PumpCtrl(void);
+void PumpGPIO(uint8_t);
 void BootstrapCharge(uint8_t, uint8_t);
 void Pumpoff(uint8_t);
-void CheckPumps(void);
+// Valve 
+void ValveCtrl(void);
+void ValveGPIO(uint8_t, uint8_t);
+// Flow sensor 
+void Readflow(void);
+// Misc 
+void Update_LED(void);
+void Timer6_test(void);
 
 
 
@@ -138,17 +151,7 @@ int main(void)
     // too lazy so just set the LED flags to turn on and off 
     Update_LED();
     CheckPumps();
-
-    if (Timer6_flag)
-    {
-      tim6_val = Get_timer6_us();
-      while(Get_timer6_us() - tim6_val < 10e6);
-      printf("10 seconds reached\r\n");
-      LED2 = 1; 
-      Timer6_flag = 0; 
-    }
-
-
+    Timer6_test();
 
 
     /* USER CODE END WHILE */
@@ -311,7 +314,7 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pins : FLOW3_Pin FLOW2_Pin FLOW1_Pin */
   GPIO_InitStruct.Pin = FLOW3_Pin|FLOW2_Pin|FLOW1_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
@@ -320,32 +323,11 @@ static void MX_GPIO_Init(void)
 }
 
 /* USER CODE BEGIN 4 */
+/************************ SYSTEM FUNCTIONS (ISR) ************************/
 int _write(int file, char *ptr, int len) 
 {
   CDC_Transmit_FS((uint8_t*)ptr, len);
   return len;
-}
-
-void Update_LED(void)
-{
-  if (LED1) HAL_GPIO_WritePin(GPIOA, LED1_Pin, 1);
-  else HAL_GPIO_WritePin(GPIOA, LED1_Pin, 0);
-  if (LED2) HAL_GPIO_WritePin(GPIOB, LED2_Pin, 1);
-  else HAL_GPIO_WritePin(GPIOB, LED2_Pin, 0);
-}
-
-uint32_t Get_timer6_us(void)
-{
-  int temp = __HAL_TIM_GET_COUNTER(&htim6);
-  return tim6_overflow * 65536 + temp;
-}
-
-// INTERRUPT CALLBACKS
-void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
-  if (htim == &htim6) //check if timer6 IT flag
-  {
-    tim6_overflow++;
-  }
 }
 
 static void DWT_DelayInit(void)
@@ -362,13 +344,88 @@ static inline void Delay_us(uint32_t us)
     while ((DWT->CYCCNT - start) < ticks);
 }
 
-void CheckPumps(void)
+// INTERRUPT CALLBACKS
+void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim) {
+  if (htim == &htim6) //check if timer6 IT flag
+  {
+    tim6_overflow++;
+  }
+}
+
+// GPIO EXTI CALLBACKS 
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+  // Rising / Falling edge 
+  if (GPIO_Pin == FLOW1_Pin)
+  {
+    if (HAL_GPIO_ReadPin(GPIOB, FLOW1_Pin)) 
+    {
+      flow_start[0] = Get_timer6_us();
+    }
+    else 
+    {
+      flow[0].pulse_duration = Get_timer6_us() - flow_start[0];
+    }
+  }
+  if (GPIO_Pin == FLOW2_Pin)
+  {
+    if (HAL_GPIO_ReadPin(GPIOB, FLOW2_Pin)) 
+    {
+      flow_start[1] = Get_timer6_us();
+    }
+    else 
+    {
+      flow[1].pulse_duration = Get_timer6_us() - flow_start[1];
+    }
+  }
+  if (GPIO_Pin == FLOW3_Pin)
+  {
+    if (HAL_GPIO_ReadPin(GPIOB, FLOW3_Pin)) 
+    {
+      flow_start[2] = Get_timer6_us();
+    }
+    else 
+    {
+      flow[2].pulse_duration = Get_timer6_us() - flow_start[2];
+    }
+  }
+}
+
+/************************ HELPER FUNCTIONS ************************/
+
+void Update_LED(void)
+{
+  if (LED1) HAL_GPIO_WritePin(GPIOA, LED1_Pin, 1);
+  else HAL_GPIO_WritePin(GPIOA, LED1_Pin, 0);
+  if (LED2) HAL_GPIO_WritePin(GPIOB, LED2_Pin, 1);
+  else HAL_GPIO_WritePin(GPIOB, LED2_Pin, 0);
+}
+
+void Timer6_test(void)
+{
+  if (Timer6_flag)
+  {
+    tim6_val = Get_timer6_us();
+    while(Get_timer6_us() - tim6_val < 10e6);
+    printf("10 seconds reached\r\n");
+    LED2 = 1; 
+    Timer6_flag = 0; 
+  }
+}
+
+uint32_t Get_timer6_us(void)
+{
+  int temp = __HAL_TIM_GET_COUNTER(&htim6);
+  return tim6_overflow * 65536 + temp;
+}
+
+void PumpCtrl(void)
 {
   if (pump1.status)
   {
     if (Get_timer6_us() - pump1.start_us < pump1.duration_us)
     {
-      PumpCtrl(3);
+      PumpGPIO(3);
       LED1 = 1; 
     }
     else 
@@ -387,7 +444,7 @@ void CheckPumps(void)
   {
     if (Get_timer6_us() - pump2.start_us < pump2.duration_us)
     {
-      PumpCtrl(3);
+      PumpGPIO(3);
       LED1 = 1; 
     }
     else 
@@ -406,7 +463,7 @@ void CheckPumps(void)
   {
     if (Get_timer6_us() - pump3.start_us < pump3.duration_us)
     {
-      PumpCtrl(3);
+      PumpGPIO(3);
       LED1 = 1; 
     }
     else 
@@ -422,7 +479,7 @@ void CheckPumps(void)
   }
 }
 
-void PumpCtrl(uint8_t pumpnum)
+void PumpGPIO(uint8_t pumpnum)
 {
   switch(pumpnum)
   {
@@ -525,7 +582,66 @@ void Pumpoff(uint8_t pumpnum)
   }
 }
 
+void Readflow(void)
+{
+  // pulse vs flow rate eq: flow_rate = (9*pulse + 800) / (640)
+  for (uint8_t i = 0; i < 3; i++)
+  {
+    flow[i].flow_rate = (9 * flow[i].pulse_duration + 800) / 640; 
+  }
+}
 
+void ValveCtrl(void)
+{
+  for (uint8_t i = 0; i < 6; i++)
+  {
+    if (valve[i].status)
+    {
+      if (Get_timer6_us()-valve[i].start_us < valve[i].duration_us)
+      {
+        ValveGPIO(i+1,1);
+      }
+      else
+      {
+        ValveGPIO(i+1,0);
+        valve[i].status = 0; 
+        valve[i].start_us = 0; 
+        valve[i].duration_us = 0; 
+        printf("Valve %d stopped", i+1);
+      }
+    }
+  }
+}
+
+void ValveGPIO(uint8_t valvenum, uint8_t state)
+{
+  switch(valvenum){
+    case 1: 
+      if (state)  HAL_GPIO_WritePin(GPIOC, VAL1_Pin,1);
+      else        HAL_GPIO_WritePin(GPIOC, VAL1_Pin,0);
+      break; 
+    case 2: 
+      if (state)  HAL_GPIO_WritePin(GPIOC, VAL2_Pin,1);
+      else        HAL_GPIO_WritePin(GPIOC, VAL2_Pin,0);
+      break;
+    case 3: 
+      if (state)  HAL_GPIO_WritePin(GPIOC, VAL3_Pin,1);
+      else        HAL_GPIO_WritePin(GPIOC, VAL3_Pin,0);
+      break; 
+    case 4: 
+      if (state)  HAL_GPIO_WritePin(GPIOB, VAL4_Pin,1);
+      else        HAL_GPIO_WritePin(GPIOB, VAL4_Pin,0);
+      break;  
+    case 5: 
+      if (state)  HAL_GPIO_WritePin(GPIOB, VAL5_Pin,1);
+      else        HAL_GPIO_WritePin(GPIOB, VAL5_Pin,0);
+      break; 
+    case 6: 
+      if (state)  HAL_GPIO_WritePin(GPIOB, VAL6_Pin,1);
+      else        HAL_GPIO_WritePin(GPIOB, VAL6_Pin,0);
+      break; 
+  }
+}
 
 /* USER CODE END 4 */
 
