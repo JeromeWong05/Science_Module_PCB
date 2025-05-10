@@ -148,10 +148,12 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+    
     Update_LED();
     PumpCtrl();
     ValveCtrl();
     Timer6_test();
+
 
 
     /* USER CODE END WHILE */
@@ -315,8 +317,12 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pins : FLOW3_Pin FLOW2_Pin FLOW1_Pin */
   GPIO_InitStruct.Pin = FLOW3_Pin|FLOW2_Pin|FLOW1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
 /* USER CODE BEGIN MX_GPIO_Init_2 */
 /* USER CODE END MX_GPIO_Init_2 */
@@ -461,6 +467,7 @@ void PumpCtrl(void)
   {
     if (Get_timer6_us() - pump3.start_us < pump3.duration_us)
     {
+      Readflow();
       PumpGPIO(3);
       LED2 = 1; 
     }
@@ -468,10 +475,11 @@ void PumpCtrl(void)
     {
       LED2 = 0; 
       pump3.status = 0; 
-      pump3.start_us = 0; 
+      // pump3.start_us = 0; 
       pump3.duration_us = 0; 
       Pumpoff(3);
-      printf("Pump 3 done!\r\n");
+      // printf("Pump 3 done!\r\n");
+      printf("Start time: %ld, End time: %ld, Difference: %ld\r\n", pump3.start_us, Get_timer6_us(), Get_timer6_us()-pump3.start_us);
     }
   }
 }
@@ -585,7 +593,9 @@ void Readflow(void)
   for (uint8_t i = 0; i < 3; i++)
   {
     flow[i].flow_rate = (9 * flow[i].pulse_duration + 800) / 640; 
+    
   }
+  printf("1:%.3f 2:%.3f 3:%.3f       \r\n", flow[0].flow_rate, flow[1].flow_rate, flow[2].flow_rate);
 }
 
 void ValveCtrl(void)

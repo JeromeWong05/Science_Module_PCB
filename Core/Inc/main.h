@@ -109,10 +109,13 @@ void Error_Handler(void);
 #define VAL4_GPIO_Port GPIOB
 #define FLOW3_Pin GPIO_PIN_7
 #define FLOW3_GPIO_Port GPIOB
+#define FLOW3_EXTI_IRQn EXTI9_5_IRQn
 #define FLOW2_Pin GPIO_PIN_8
 #define FLOW2_GPIO_Port GPIOB
+#define FLOW2_EXTI_IRQn EXTI9_5_IRQn
 #define FLOW1_Pin GPIO_PIN_9
 #define FLOW1_GPIO_Port GPIOB
+#define FLOW1_EXTI_IRQn EXTI9_5_IRQn
 
 /* USER CODE BEGIN Private defines */
 extern uint8_t LED1_flag; 
